@@ -69,12 +69,30 @@ namespace EventEase4.Controllers
         {
             if (ModelState.IsValid)
             {
+                // Check for double booking
+                bool bookingExists = await _context.Booking.AnyAsync(b =>
+                    b.VenueId == booking.VenueId &&
+                    b.BookingDate.Date == booking.BookingDate.Date);
+
+                if (bookingExists)
+                {
+                    ModelState.AddModelError("", "This venue is already booked on the selected date.");
+
+                    // Refill dropdowns
+                    ViewData["VenueId"] = new SelectList(_context.Venue, "VenueId", "VenueName", booking.VenueId);
+                    ViewData["EventId"] = new SelectList(_context.Event, "EventId", "EventName", booking.EventId);
+                    return View(booking);
+                }
+
+                // No double booking, safe to save
                 _context.Add(booking);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["EventID"] = new SelectList(_context.Event, "EventID", "EventName");
-            ViewData["VenueID"] = new SelectList(_context.Venue, "VenueID", "VenueName");
+
+            // Refill dropdowns if ModelState is invalid
+            ViewData["VenueId"] = new SelectList(_context.Venue, "VenueId", "VenueName", booking.VenueId);
+            ViewData["EventId"] = new SelectList(_context.Event, "EventId", "EventName", booking.EventId);
             return View(booking);
         }
 

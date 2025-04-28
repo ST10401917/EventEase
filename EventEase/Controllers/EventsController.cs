@@ -139,12 +139,16 @@ namespace EventEase.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var @event = await _context.Event.FindAsync(id);
-            if (@event != null)
+            bool hasPlays = await _context.Booking.AnyAsync(GamerGame => GamerGame.EventId == id);
+            if (hasPlays)
             {
-                _context.Event.Remove(@event);
+                var @event = await _context.Event.FindAsync(id);
+                ModelState.AddModelError("", "Cannot delete this event because there is already a booking for this event");
+                return View(@event);
             }
 
+            var eventToDelete = await _context.Event.FindAsync(id);
+            _context.Event.Remove(eventToDelete);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
